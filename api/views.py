@@ -5,12 +5,13 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 
-from api.utils import download_district_locations, get_top_ten_districts
+from api.serializers import TravelRequestSerializer
+from api.utils import determine_travel, download_district_locations, get_top_ten_districts
 # Create your views here.
 
 
-class TestView(APIView):
-    def get(self, request):
+class TopCoolestView(APIView):
+    def get(self, request, **kwargs):
         file_path = os.path.join("api", "data", "district_locations.json")
         
         try:
@@ -32,3 +33,11 @@ class TestView(APIView):
         except Exception as e:
             # Handle any other errors
             return Response({"error": f"Unexpected error: {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+class DetermineTravel(APIView):
+    def post(self, request, **kwargs):
+        serializer = TravelRequestSerializer(data=request.data)
+        if serializer.is_valid():
+            value = asyncio.run(determine_travel(validated_data=serializer.validated_data))
+            return Response(value, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

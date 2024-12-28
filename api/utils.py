@@ -35,14 +35,6 @@ def download_district_locations():
         print(f"Error saving data: {e}")
 
 
-# def get_top_ten_districts(data):
-#     top_ten_districts = []
-#     for district_data in data:
-#         lat=data.get("lat")
-#         lng = data.get("long")
-#         url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lng}&forecast_days=7&timezone=Asia/Dacca&hourly=temperature_2m"
-
-
 async def fetch_temperature_data(session, url, district_name):
     """
     Fetch temperature data for a district asynchronously.
@@ -96,3 +88,62 @@ async def get_top_ten_districts(data):
     top_ten_districts = sorted(filtered_results, key=lambda x: x["average_temp"])[:10]
 
     return top_ten_districts
+
+async def fetch_temperature_data(url, params):
+    """
+    Fetch temperature data from the API.
+    """
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url, params=params) as response:
+            if response.status == 200:
+                return await response.json()
+            else:
+                raise RuntimeError(f"Failed to fetch data: HTTP {response.status}")
+
+async def determine_travel(validated_data):
+    location = validated_data.get("location")
+    destination = validated_data.get("destination")
+    date_of_travel = validated_data.get("date_of_travel")
+    
+    location_lat, location_lng = location["lat"], location["long"]
+    destination_lat, destination_lng = destination["lat"], destination["long"]
+    
+    # API URL and parameters
+    base_url = "https://api.open-meteo.com/v1/forecast"
+    params = {
+        "hourly": "temperature_2m",
+        "timezone": "Asia/Dacca"
+    }
+    
+    # Construct URLs
+    location_url = f"{base_url}?latitude={location_lat}&longitude={location_lng}&forecast_days=7"
+    destination_url = f"{base_url}?latitude={destination_lat}&longitude={destination_lng}&forecast_days=7"
+    
+    try:
+        # Fetch data asynchronously for both location and destination
+        location_task = fetch_temperature_data(location_url, params)
+        destination_task = fetch_temperature_data(destination_url, params)
+        location_data, destination_data = await asyncio.gather(location_task, destination_task)
+        
+        # Filter temperature for date_of_travel at 2PM
+        location_temp = get_temp_at_2pm(location_data, date_of_travel)
+        destination_temp = get_temp_at_2pm(destination_data, date_of_travel)
+        
+        if location_temp is None or destination_temp is None:
+            return "Temperature data not available for the given date."
+        
+        # Compare temperatures
+        return "Can Travel" if destination_temp < location_temp else "Cannot Travel"
+    
+    except Exception as e:
+        raise RuntimeError(f"Error fetching temperature data: {e}")
+    
+def get_temp_at_2pm(data, date):
+    times = data["hourly"]["time"]
+    temperatures = data["hourly"]["temperature_2m"]
+    temp_at_2pm = [
+        temperatures[i]
+        for i, time in enumerate(times)
+        if time.startswith(date.strftime("%Y-%m-%d")) and time.endswith("T14:00")
+    ]
+    return temp_at_2pm[0] if temp_at_2pm else None
