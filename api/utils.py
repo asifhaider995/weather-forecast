@@ -89,7 +89,7 @@ async def get_top_ten_districts(data):
 
     return top_ten_districts
 
-async def fetch_temperature_data(url, params):
+async def _fetch_temperature_data(url, params):
     """
     Fetch temperature data from the API.
     """
@@ -121,8 +121,8 @@ async def determine_travel(validated_data):
     
     try:
         # Fetch data asynchronously for both location and destination
-        location_task = fetch_temperature_data(location_url, params)
-        destination_task = fetch_temperature_data(destination_url, params)
+        location_task = _fetch_temperature_data(location_url, params)
+        destination_task = _fetch_temperature_data(destination_url, params)
         location_data, destination_data = await asyncio.gather(location_task, destination_task)
         
         # Filter temperature for date_of_travel at 2PM
