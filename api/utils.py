@@ -93,6 +93,6 @@ async def get_top_ten_districts(data):
 
     # Filter out None responses and sort by average temperature
     filtered_results = [res for res in results if res is not None]
-    top_ten_districts = sorted(filtered_results, key=lambda x: x["average_temp"], reverse=True)[:10]
+    top_ten_districts = sorted(filtered_results, key=lambda x: x["average_temp"])[:10]
 
     return top_ten_districts
